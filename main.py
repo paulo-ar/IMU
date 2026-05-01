@@ -1363,8 +1363,8 @@ if __name__ == "__main__":
     try:
         bt = Bluetooth("COM8")
     except Exception as e:
-        print(f"Warning: Could not connect to COM7 port ({e}).")
-        print("The system will continue without sending Bluetooth commands for interface testing.")
+        print(f"Advertencia: No se pudo conectar al puerto COM8 ({e}).")
+        print("El sistema continuara sin enviar comandos Bluetooth para pruebas de interfaz.")
         bt = None
 
     mostrar_inicio()
