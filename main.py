@@ -349,10 +349,9 @@ class Proceso:
 # 4. INTERFAZ (Tkinter)
 # ==========================================
 class LoginScreen:
-    def __init__(self, root, on_submit, on_exit):
+    def __init__(self, root, on_submit):
         self.root = root
         self.on_submit = on_submit
-        self.on_exit = on_exit
 
         root.configure(bg=COLORS["off_white"])
 
@@ -362,8 +361,8 @@ class LoginScreen:
         self.login_card_window = None
         background.bind("<Configure>", self._resize_background)
 
-        card = ttk.Frame(background, style="Surface.TFrame", padding=(38, 28, 38, 30))
-        self.login_card_window = background.create_window(0, 0, window=card, width=380)
+        card = ttk.Frame(background, style="Surface.TFrame", padding=(46, 34, 46, 36))
+        self.login_card_window = background.create_window(0, 0, window=card, width=456)
 
         self.login_logos = LogoStrip(card, style="Surface.TFrame")
         self.login_logos.pack(anchor="center", pady=(0, 16))
@@ -371,7 +370,7 @@ class LoginScreen:
         ttk.Label(card, text="Smart Alignment and Torque Monitoring System", style="Subtitle.TLabel").pack(pady=(0, 18))
 
         self.entries = {}
-        campos = ["Torque ID", "User Name", "User ID", "Incubator ID"]
+        campos = ["User ID", "User Name", "Torque ID"]
 
         for campo in campos:
             ttk.Label(card, text=campo, style="Surface.TLabel").pack(anchor="w")
@@ -380,7 +379,58 @@ class LoginScreen:
             self.entries[campo] = entry
 
         RoundedButton(card, text="Send", command=self.submit).pack(pady=(8, 8))
-        RoundedButton(card, text="Exit", command=self.on_exit).pack()
+
+    def _resize_background(self, event):
+        canvas = self.login_background
+        canvas.delete("geometry")
+        canvas.create_polygon(0, 0, 260, 0, 0, 210, fill=COLORS["navy"], outline="", tags="geometry")
+        canvas.create_polygon(event.width, event.height, event.width - 300, event.height, event.width, event.height - 230, fill=COLORS["turquoise_light"], outline="", tags="geometry")
+        canvas.create_polygon(event.width - 210, 54, event.width - 105, 105, event.width - 200, 168, fill="#D9F7FA", outline="", tags="geometry")
+        canvas.tag_lower("geometry")
+        if self.login_card_window:
+            canvas.coords(self.login_card_window, event.width / 2, event.height / 2)
+
+    def submit(self):
+        operator_data = {
+            "torque_id": self.entries["Torque ID"].get(),
+            "user_id": self.entries["User ID"].get(),
+            "user_name": self.entries["User Name"].get(),
+        }
+        self.on_submit(operator_data)
+
+
+class IncubatorScreen:
+    def __init__(self, root, operator_data, on_submit):
+        self.root = root
+        self.operator_data = operator_data
+        self.on_submit = on_submit
+
+        root.configure(bg=COLORS["off_white"])
+
+        background = tk.Canvas(root, bg=COLORS["off_white"], highlightthickness=0)
+        background.pack(fill="both", expand=True)
+        self.login_background = background
+        self.login_card_window = None
+        background.bind("<Configure>", self._resize_background)
+
+        card = ttk.Frame(background, style="Surface.TFrame", padding=(46, 34, 46, 36))
+        self.login_card_window = background.create_window(0, 0, window=card, width=456)
+
+        self.login_logos = LogoStrip(card, style="Surface.TFrame")
+        self.login_logos.pack(anchor="center", pady=(0, 16))
+        ttk.Label(card, text="SATMS", style="Title.TLabel").pack(pady=(0, 2))
+        ttk.Label(card, text="Smart Alignment and Torque Monitoring System", style="Subtitle.TLabel").pack(pady=(0, 18))
+        ttk.Label(
+            card,
+            text=f"User: {operator_data['user_name']}  |  Torque ID: {operator_data['torque_id']}",
+            style="Surface.TLabel",
+        ).pack(anchor="w", pady=(0, 12))
+
+        ttk.Label(card, text="Incubator ID", style="Surface.TLabel").pack(anchor="w")
+        self.incubator_entry = ttk.Entry(card, style="Modern.TEntry")
+        self.incubator_entry.pack(fill="x", pady=(3, 12))
+
+        RoundedButton(card, text="Send", command=self.submit).pack(pady=(8, 0))
 
     def _resize_background(self, event):
         canvas = self.login_background
@@ -394,24 +444,24 @@ class LoginScreen:
 
     def submit(self):
         data = (
-            self.entries["Incubator ID"].get(),
-            self.entries["Torque ID"].get(),
-            self.entries["User ID"].get(),
-            self.entries["User Name"].get(),
+            self.incubator_entry.get(),
+            self.operator_data["torque_id"],
+            self.operator_data["user_id"],
+            self.operator_data["user_name"],
         )
         self.on_submit(data)
 
 
 class MainScreen:
-    def __init__(self, root, bluetooth, data, on_exit):
+    def __init__(self, root, bluetooth, data, on_log_out, on_new_incubator):
         self.root = root
         self.bt = bluetooth
         self.data = data
-        self.on_exit = on_exit
+        self.on_log_out = on_log_out
+        self.on_new_incubator = on_new_incubator
         self.activo = True
         root.configure(bg=COLORS["off_white"])
 
-        # Botón Exit en la parte superior derecha
         header = ttk.Frame(root, style="Header.TFrame", padding=(24, 18, 24, 18))
         header.pack(fill="x")
 
@@ -430,8 +480,10 @@ class MainScreen:
             style="HeaderSubtitle.TLabel",
         ).pack(anchor="w", pady=(6, 0))
 
-        exit_button = ttk.Button(header, text="Exit", command=self.salir, style="Exit.TButton")
-        exit_button.pack(side="right")
+        actions = ttk.Frame(header, style="Header.TFrame")
+        actions.pack(side="right")
+        ttk.Button(actions, text="Log Out", command=self.log_out, style="Exit.TButton").pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="New Incubator", command=self.new_incubator, style="Accent.TButton").pack(side="left")
         logo_box = ttk.Frame(header, style="HeaderLogo.TFrame", padding=(18, 10, 18, 10))
         logo_box.pack(side="right", padx=(0, 24))
         self.header_logos = LogoStrip(logo_box, style="HeaderLogo.TFrame", compact=True, max_height=57)
@@ -1307,9 +1359,13 @@ class MainScreen:
     def _filtrar_en_vivo(self, *_args):
         self.cargar_registros(self.filtro_var.get().strip())
 
-    def salir(self):
+    def log_out(self):
         self.detener()
-        self.on_exit()
+        self.on_log_out()
+
+    def new_incubator(self):
+        self.detener()
+        self.on_new_incubator()
 
     def detener(self):
         self.activo = False
@@ -1321,6 +1377,12 @@ class MainScreen:
 # 5. MAIN
 # ==========================================
 current_screen = None
+operator_session = None
+
+
+def set_large_window():
+    root.geometry("1440x780")
+    root.minsize(1176, 744)
 
 
 def limpiar_pantalla():
@@ -1333,19 +1395,38 @@ def limpiar_pantalla():
 
 
 def mostrar_inicio():
+    global current_screen, operator_session
+    limpiar_pantalla()
+    operator_session = None
+    set_large_window()
+    current_screen = LoginScreen(root, guardar_operador)
+
+
+def guardar_operador(operator_data):
+    global operator_session
+    operator_session = operator_data
+    mostrar_incubadora()
+
+
+def mostrar_incubadora():
     global current_screen
     limpiar_pantalla()
-    root.geometry("1200x650")
-    root.minsize(980, 620)
-    current_screen = LoginScreen(root, iniciar_proceso, mostrar_inicio)
+    set_large_window()
+    current_screen = IncubatorScreen(root, operator_session, iniciar_proceso)
+
+
+def volver_a_incubadora():
+    if operator_session is None:
+        mostrar_inicio()
+    else:
+        mostrar_incubadora()
 
 
 def iniciar_proceso(data):
     global current_screen
     limpiar_pantalla()
-    root.geometry("1200x650")  # Ajustar tamano para pestanas
-    root.minsize(980, 620)
-    current_screen = MainScreen(root, bt, data, mostrar_inicio)
+    set_large_window()
+    current_screen = MainScreen(root, bt, data, mostrar_inicio, volver_a_incubadora)
 
 
 def mostrar_registros():
