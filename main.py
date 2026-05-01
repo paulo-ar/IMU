@@ -496,6 +496,7 @@ class MainScreen:
         self.all_steps_expanded_instructions = set()
         self.all_steps_active_card = None
         self.all_steps_click_after = None
+        self.all_steps_ready_for_next_step = False
 
         title_row = ttk.Frame(self.all_steps_frame, style="App.TFrame")
         title_row.pack(fill="x", pady=(0, 14))
@@ -591,6 +592,18 @@ class MainScreen:
         }
         self.render_all_steps()
 
+    def toggle_all_step(self, step_index):
+        if step_index == self.all_steps_current_step:
+            self.all_steps_expanded_steps.add(step_index)
+        elif step_index in self.all_steps_expanded_steps:
+            self.all_steps_expanded_steps.discard(step_index)
+            self.all_steps_expanded_instructions = {
+                key for key in self.all_steps_expanded_instructions if key[0] != step_index
+            }
+        else:
+            self.all_steps_expanded_steps.add(step_index)
+        self.render_all_steps()
+
     def expand_all_instruction(self, step_index, instruction_index):
         self.all_steps_expanded_steps.add(step_index)
         self.all_steps_expanded_instructions.add((step_index, instruction_index))
@@ -604,6 +617,21 @@ class MainScreen:
         ):
             return
         self.all_steps_expanded_instructions.discard((step_index, instruction_index))
+        self.render_all_steps()
+
+    def toggle_all_instruction(self, step_index, instruction_index):
+        instruction_key = (step_index, instruction_index)
+        if (
+            step_index == self.all_steps_current_step
+            and instruction_index == self.all_steps_current_instruction
+            and not self.all_steps_ready_for_next_step
+        ):
+            self.all_steps_expanded_instructions.add(instruction_key)
+        elif instruction_key in self.all_steps_expanded_instructions:
+            self.all_steps_expanded_instructions.discard(instruction_key)
+        else:
+            self.all_steps_expanded_steps.add(step_index)
+            self.all_steps_expanded_instructions.add(instruction_key)
         self.render_all_steps()
 
     def render_all_steps(self, keep_current_visible=False):
@@ -649,9 +677,8 @@ class MainScreen:
             step_title.pack(side="left", fill="x", expand=True)
             step_title.bind(
                 "<Button-1>",
-                lambda _event, i=step_index: self.schedule_all_steps_action(self.expand_all_step, i),
+                lambda _event, i=step_index: self.toggle_all_step(i),
             )
-            step_title.bind("<Double-Button-1>", lambda _event, i=step_index: self.collapse_all_step(i))
 
             step_badge = tk.Label(
                 header,
@@ -666,9 +693,8 @@ class MainScreen:
             step_badge.pack(side="right", padx=14)
             step_badge.bind(
                 "<Button-1>",
-                lambda _event, i=step_index: self.schedule_all_steps_action(self.expand_all_step, i),
+                lambda _event, i=step_index: self.toggle_all_step(i),
             )
-            step_badge.bind("<Double-Button-1>", lambda _event, i=step_index: self.collapse_all_step(i))
 
             if not step_is_expanded:
                 continue
@@ -703,13 +729,7 @@ class MainScreen:
                 instruction_header.pack(fill="x")
                 instruction_header.bind(
                     "<Button-1>",
-                    lambda _event, s=step_index, i=instruction_index: self.schedule_all_steps_action(
-                        self.expand_all_instruction, s, i
-                    ),
-                )
-                instruction_header.bind(
-                    "<Double-Button-1>",
-                    lambda _event, s=step_index, i=instruction_index: self.collapse_all_instruction(s, i),
+                    lambda _event, s=step_index, i=instruction_index: self.toggle_all_instruction(s, i),
                 )
 
                 if not instruction_is_expanded:
@@ -750,6 +770,15 @@ class MainScreen:
 
     def advance_all_steps(self):
         self.cancel_all_steps_scheduled_action()
+        if self.all_steps_ready_for_next_step:
+            if self.all_steps_current_step + 1 < len(self.all_steps_data):
+                self.all_steps_expanded_steps.discard(self.all_steps_current_step)
+                self.all_steps_current_step += 1
+                self.all_steps_current_instruction = 0
+                self.all_steps_ready_for_next_step = False
+            self.render_all_steps(keep_current_visible=True)
+            return
+
         current_key = (self.all_steps_current_step, self.all_steps_current_instruction)
         self.all_steps_completed.add(current_key)
         self.all_steps_expanded_instructions.discard(current_key)
@@ -758,9 +787,8 @@ class MainScreen:
         if self.all_steps_current_instruction + 1 < len(current_step["instructions"]):
             self.all_steps_current_instruction += 1
         elif self.all_steps_current_step + 1 < len(self.all_steps_data):
-            self.all_steps_expanded_steps.discard(self.all_steps_current_step)
-            self.all_steps_current_step += 1
-            self.all_steps_current_instruction = 0
+            self.all_steps_expanded_steps.add(self.all_steps_current_step)
+            self.all_steps_ready_for_next_step = True
         self.render_all_steps(keep_current_visible=True)
 
     def setup_steps(self):
