@@ -212,18 +212,66 @@ def init_db():
         )
         conn.commit()
 
+    cursor.execute(
+        """
+    CREATE TABLE IF NOT EXISTS alignment_status (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_registro INTEGER UNIQUE,
+        id_incubadora TEXT,
+        id_usuario TEXT,
+        nombre_usuario TEXT,
+        error_x TEXT DEFAULT '',
+        error_y TEXT DEFAULT '',
+        error_z TEXT DEFAULT '',
+        alignment TEXT,
+        fecha TEXT
+    )
+    """
+    )
+    conn.commit()
+
+    cursor.execute(
+        """
+    INSERT OR IGNORE INTO alignment_status
+    (id_registro, id_incubadora, id_usuario, nombre_usuario, error_x, error_y, error_z, alignment, fecha)
+    SELECT
+        id,
+        id_incubadora,
+        id_usuario,
+        nombre_usuario,
+        '',
+        '',
+        '',
+        CASE WHEN alignment_not_aligned = 1 THEN 'Not aligned' ELSE 'Aligned' END,
+        fecha_inicio
+    FROM registros
+    """
+    )
+    conn.commit()
+
 
 def insertar_inicio(data, paso, campo, alignment_not_aligned):
+    fecha_inicio = datetime.now()
     cursor.execute(
         """
     INSERT INTO registros
     (id_incubadora, id_torquimetro, id_usuario, nombre_usuario, id_paso, id_campo, alignment_not_aligned, fecha_inicio)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """,
-        (*data, paso, campo, alignment_not_aligned, datetime.now()),
+        (*data, paso, campo, alignment_not_aligned, fecha_inicio),
+    )
+    id_registro = cursor.lastrowid
+    alignment = "Not aligned" if alignment_not_aligned else "Aligned"
+    cursor.execute(
+        """
+    INSERT INTO alignment_status
+    (id_registro, id_incubadora, id_usuario, nombre_usuario, error_x, error_y, error_z, alignment, fecha)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+        (id_registro, data[0], data[2], data[3], "", "", "", alignment, fecha_inicio),
     )
     conn.commit()
-    return cursor.lastrowid
+    return id_registro
 
 
 def actualizar_fin(id_registro):
@@ -244,6 +292,17 @@ def obtener_registros(id_incubadora=None):
         )
     else:
         cursor.execute("SELECT * FROM registros ORDER BY id DESC")
+    return cursor.fetchall()
+
+
+def obtener_alignment_status(id_incubadora=None):
+    if id_incubadora:
+        cursor.execute(
+            "SELECT * FROM alignment_status WHERE id_incubadora LIKE ? ORDER BY id DESC",
+            (f"%{id_incubadora}%",),
+        )
+    else:
+        cursor.execute("SELECT * FROM alignment_status ORDER BY id DESC")
     return cursor.fetchall()
 
 
@@ -1294,24 +1353,24 @@ class MainScreen:
         query = filtro or ""
         rendered_index = 0
 
-        for registro in obtener_registros():
-            (
-                id_reg,
-                id_inc,
-                id_torq,
-                id_usu,
-                nom_usu,
-                id_paso,
-                id_campo,
-                alignment_not_aligned,
-                fecha_inicio,
-                fecha_fin,
-            ) = registro
+        if current_view == "Torque Wrench Records":
+            source_rows = obtener_registros()
+            for registro in source_rows:
+                (
+                    id_reg,
+                    id_inc,
+                    id_torq,
+                    id_usu,
+                    nom_usu,
+                    id_paso,
+                    id_campo,
+                    alignment_not_aligned,
+                    fecha_inicio,
+                    fecha_fin,
+                ) = registro
 
-            start_date, start_time = self._split_datetime(fecha_inicio)
-            end_date, end_time = self._split_datetime(fecha_fin)
-
-            if current_view == "Torque Wrench Records":
+                start_date, start_time = self._split_datetime(fecha_inicio)
+                end_date, end_time = self._split_datetime(fecha_fin)
                 row_values = (
                     id_reg,
                     id_inc,
@@ -1326,28 +1385,49 @@ class MainScreen:
                     end_time,
                 )
                 row_tags = ["even" if rendered_index % 2 else "odd"]
-            else:
-                alignment_text = "Not aligned" if alignment_not_aligned else "Aligned"
+
+                if not self._row_matches_filter(row_values, columns, search_column, query):
+                    continue
+
+                self.tabla.insert("", "end", values=row_values, tags=tuple(row_tags))
+                rendered_index += 1
+        else:
+            source_rows = obtener_alignment_status()
+            for registro in source_rows:
+                (
+                    id_reg,
+                    id_torque_record,
+                    id_inc,
+                    id_usu,
+                    nom_usu,
+                    error_x,
+                    error_y,
+                    error_z,
+                    alignment_text,
+                    fecha,
+                ) = registro
+
+                date, hour = self._split_datetime(fecha)
                 row_values = (
                     id_reg,
                     id_inc,
                     id_usu,
                     nom_usu,
-                    "",
-                    "",
-                    "",
+                    error_x,
+                    error_y,
+                    error_z,
                     alignment_text,
-                    start_date,
-                    start_time,
+                    date,
+                    hour,
                 )
                 row_tags = ["even" if rendered_index % 2 else "odd"]
-                row_tags.append("not_aligned" if alignment_not_aligned else "aligned")
+                row_tags.append("not_aligned" if alignment_text == "Not aligned" else "aligned")
 
-            if not self._row_matches_filter(row_values, columns, search_column, query):
-                continue
+                if not self._row_matches_filter(row_values, columns, search_column, query):
+                    continue
 
-            self.tabla.insert("", "end", values=row_values, tags=tuple(row_tags))
-            rendered_index += 1
+                self.tabla.insert("", "end", values=row_values, tags=tuple(row_tags))
+                rendered_index += 1
 
     def filtrar(self):
         self.cargar_registros(self.filtro_var.get().strip())
