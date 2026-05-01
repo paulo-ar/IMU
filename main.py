@@ -251,7 +251,7 @@ def obtener_registros(id_incubadora=None):
 # 2. BLUETOOTH
 # ==========================================
 class Bluetooth:
-    def __init__(self, puerto="COM6"):
+    def __init__(self, puerto="COM8"):
         self.ser = serial.Serial(puerto, 9600, timeout=1)
 
     def enviar(self, valor):
@@ -802,12 +802,39 @@ class MainScreen:
         content.grid_columnconfigure(0, weight=1, uniform="steps")
         content.grid_columnconfigure(1, weight=2, uniform="steps")
 
-        step1_frame = self._build_panel(content, "Step 1", 0, 0, (0, 10))
+        self.steps_instruction_data = {
+            (1, 1): {
+                "identifier": "Radiant heater bracket nut 1.",
+                "torque": "7.0 ± 10% Nm.",
+            },
+            (1, 2): {
+                "identifier": "Radiant heater bracket nut 2.",
+                "torque": "7.0 ± 10% Nm.",
+            },
+            (1, 3): {
+                "identifier": "Radiant heater bracket nut 3.",
+                "torque": "7.0 ± 10% Nm.",
+            },
+            (2, 1): {
+                "identifier": "Radiant heater nut 1.",
+                "torque": "7.0 ± 10% Nm (in the same sequence).",
+            },
+            (2, 2): {
+                "identifier": "Radiant heater nut 2.",
+                "torque": "7.0 ± 10% Nm (in the same sequence).",
+            },
+            (2, 3): {
+                "identifier": "Radiant heater nut 3.",
+                "torque": "7.0 ± 10% Nm (in the same sequence).",
+            },
+        }
+
+        step1_frame = self._build_panel(content, "Step K", 0, 0, (0, 10))
         self.step1_labels = {}
         for campo in range(1, 4):
-            label = self._instruction_label(step1_frame, f"Instruction {campo}: Pending")
-            label.pack(fill="x", pady=5)
-            self.step1_labels[campo] = label
+            card = self._instruction_card(step1_frame, 1, campo)
+            card["container"].pack(fill="x", pady=5)
+            self.step1_labels[campo] = card
 
         grouped_panel = tk.Frame(content, bg=COLORS["white"], highlightbackground=COLORS["line"], highlightthickness=1)
         grouped_panel.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
@@ -818,7 +845,7 @@ class MainScreen:
         grouped_header.grid(row=0, column=0, columnspan=2, sticky="ew")
         grouped_header.create_rectangle(0, 0, 8, 52, fill=COLORS["turquoise"], outline="")
         grouped_header.create_polygon(610, 0, 720, 0, 720, 52, fill=COLORS["turquoise_light"], outline="")
-        ttk.Label(grouped_header, text="Alignment and Step 2", style="Surface.TLabel", font=modern_font(13, "bold")).place(x=24, y=15)
+        ttk.Label(grouped_header, text="Alignment and Step M", style="Surface.TLabel", font=modern_font(13, "bold")).place(x=24, y=15)
 
         alignment_frame = ttk.Frame(grouped_panel, style="Surface.TFrame", padding=(22, 12, 12, 20))
         alignment_frame.grid(row=1, column=0, sticky="nsew")
@@ -848,12 +875,12 @@ class MainScreen:
 
         step2_frame = ttk.Frame(grouped_panel, style="Surface.TFrame", padding=(12, 12, 22, 20))
         step2_frame.grid(row=1, column=1, sticky="nsew")
-        ttk.Label(step2_frame, text="Step 2", style="Surface.TLabel", font=modern_font(12, "bold")).pack(anchor="w", pady=(0, 12))
+        ttk.Label(step2_frame, text="Step M", style="Surface.TLabel", font=modern_font(12, "bold")).pack(anchor="w", pady=(0, 12))
         self.labels = {}
         for campo in range(1, 4):
-            label = self._instruction_label(step2_frame, f"Instruction {campo}: Pending")
-            label.pack(fill="x", pady=5)
-            self.labels[(2, campo)] = label
+            card = self._instruction_card(step2_frame, 2, campo)
+            card["container"].pack(fill="x", pady=5)
+            self.labels[(2, campo)] = card
 
         self.estado_label = tk.Label(
             self.steps_frame,
@@ -894,6 +921,69 @@ class MainScreen:
             pady=10,
             relief="flat",
         )
+
+    def _instruction_card(self, parent, paso, campo):
+        container = tk.Frame(parent, bg=COLORS["pending"])
+        header = self._instruction_label(container, f"Instruction {campo}: Pending")
+        header.pack(fill="x")
+
+        detail = tk.Frame(container, bg=COLORS["white"])
+        data = self.steps_instruction_data[(paso, campo)]
+
+        identifier_frame = tk.Frame(detail, bg=COLORS["white"])
+        identifier_frame.pack(fill="x", padx=12, pady=(10, 6))
+        tk.Label(
+            identifier_frame,
+            text="Identifier",
+            bg=COLORS["white"],
+            fg=COLORS["navy"],
+            font=modern_font(12, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+        tk.Label(
+            identifier_frame,
+            text=data["identifier"],
+            bg=COLORS["white"],
+            fg=COLORS["navy_2"],
+            font=modern_font(11),
+            anchor="w",
+            justify="left",
+            wraplength=360,
+        ).pack(fill="x", pady=(2, 0))
+
+        torque_frame = tk.Frame(detail, bg=COLORS["white"])
+        torque_frame.pack(fill="x", padx=12, pady=(2, 12))
+        tk.Label(
+            torque_frame,
+            text="Torque",
+            bg=COLORS["white"],
+            fg=COLORS["navy"],
+            font=modern_font(12, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+        tk.Label(
+            torque_frame,
+            text=data["torque"],
+            bg=COLORS["white"],
+            fg=COLORS["navy_2"],
+            font=modern_font(11),
+            anchor="w",
+            justify="left",
+            wraplength=360,
+        ).pack(fill="x", pady=(2, 0))
+
+        return {"container": container, "header": header, "detail": detail}
+
+    def _set_instruction_state(self, card, text, bg, fg, expanded=False):
+        card["container"].config(bg=bg)
+        card["header"].config(text=text, bg=bg, fg=fg)
+        if expanded:
+            card["detail"].pack(fill="x")
+        else:
+            card["detail"].pack_forget()
+
+    def _steps_display_name(self, paso):
+        return "Step K" if paso == 1 else "Step M"
 
     def setup_records(self):
         self.table_configs = {
@@ -1100,34 +1190,46 @@ class MainScreen:
 
         if estado == "en_proceso":
             if paso == 1:
-                self.step1_labels[campo].config(
-                    text=f"Instruction {campo}: In progress",
-                    bg=COLORS["turquoise"],
-                    fg=COLORS["white"],
+                self._set_instruction_state(
+                    self.step1_labels[campo],
+                    f"Instruction {campo}: In progress",
+                    COLORS["turquoise"],
+                    COLORS["white"],
+                    expanded=True,
                 )
             elif paso == 2:
-                self.labels[(paso, campo)].config(
-                    text=f"Instruction {campo}: In progress",
-                    bg=COLORS["turquoise"],
-                    fg=COLORS["white"],
+                self._set_instruction_state(
+                    self.labels[(paso, campo)],
+                    f"Instruction {campo}: In progress",
+                    COLORS["turquoise"],
+                    COLORS["white"],
+                    expanded=True,
                 )
-            self.estado_label.config(text=f"Status: Step {paso}, instruction {campo} in progress")
+            self.estado_label.config(text=f"Status: {self._steps_display_name(paso)}, instruction {campo} in progress")
         elif estado == "terminado":
             if paso == 1:
-                self.step1_labels[campo].config(
-                    text=f"✓ Instruction {campo}: Completed",
-                    bg=COLORS["green"],
-                    fg=COLORS["navy"],
+                self._set_instruction_state(
+                    self.step1_labels[campo],
+                    f"✓ Instruction {campo}: Completed",
+                    COLORS["green"],
+                    COLORS["navy"],
+                    expanded=False,
                 )
             elif paso == 2:
-                self.labels[(paso, campo)].config(
-                    text=f"✓ Instruction {campo}: Completed",
-                    bg=COLORS["green"],
-                    fg=COLORS["navy"],
+                self._set_instruction_state(
+                    self.labels[(paso, campo)],
+                    f"✓ Instruction {campo}: Completed",
+                    COLORS["green"],
+                    COLORS["navy"],
+                    expanded=False,
                 )
-            self.estado_label.config(text=f"Status: Step {paso}, instruction {campo} completed")
+            self.estado_label.config(text=f"Status: {self._steps_display_name(paso)}, instruction {campo} completed")
         elif estado == "proceso_finalizado":
-            self.estado_label.config(text="Station 10.5 completed")
+            self.estado_label.config(
+                text="Station 10.5 completed",
+                bg=COLORS["green"],
+                fg=COLORS["navy"],
+            )
 
     def cargar_registros(self, filtro=None):
         for item in self.tabla.get_children():
@@ -1259,7 +1361,7 @@ if __name__ == "__main__":
     init_db()
 
     try:
-        bt = Bluetooth("COM6")
+        bt = Bluetooth("COM8")
     except Exception as e:
         print(f"Warning: Could not connect to COM7 port ({e}).")
         print("The system will continue without sending Bluetooth commands for interface testing.")
