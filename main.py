@@ -442,6 +442,9 @@ class MainScreen:
         self.notebook.pack(fill="both", expand=True, padx=18, pady=18)
 
         # Pestaña STEPS
+        self.all_steps_frame = ttk.Frame(self.notebook, style="App.TFrame", padding=16)
+        self.notebook.add(self.all_steps_frame, text="All Steps")
+
         self.steps_frame = ttk.Frame(self.notebook, style="App.TFrame", padding=16)
         self.notebook.add(self.steps_frame, text="Steps")
 
@@ -450,6 +453,7 @@ class MainScreen:
         self.notebook.add(self.records_frame, text="Records")
 
         # Configurar STEPS
+        self.setup_all_steps()
         self.setup_steps()
 
         # Configurar RECORDS
@@ -458,6 +462,306 @@ class MainScreen:
         # Iniciar proceso en STEPS
         self.proceso = Proceso(bluetooth, data, self.actualizar_ui, self.get_toggle_state)
         Thread(target=self.proceso.ejecutar, daemon=True).start()
+
+    def setup_all_steps(self):
+        self.all_steps_data = [
+            {"title": "Step A", "instructions": [{"kind": "Action", "description": "Open eDHR, go to \"BOP_Incubators_Omni_Route\", select operation \"105: BOP_OMNI_Assy_10_5\", and enter the unit's serial number."}]},
+            {"title": "Step B", "instructions": [{"kind": "Action", "description": "Connect the canopy and elevating column power box to the canopy motor, elevating column, and East rail cables."}, {"kind": "Action", "description": "Adjust canopy or column height to a comfortable position using the switch, ensuring no strange noises during movement."}]},
+            {"title": "Step C", "instructions": [{"kind": "Action", "description": "Install the East upper endcap (p/n 6600-0634-700) by pulling its spring down onto the inner East rail bolt using the tool."}, {"kind": "Action", "description": "Lift the cap to verify spring retention, then record its lot number in eDHR."}]},
+            {"title": "Step D", "instructions": [{"kind": "Action", "description": "Install the West upper endcap (p/n 6600-0635-700) by pulling its spring down onto the inner West rail bolt."}, {"kind": "Action", "description": "Verify spring retention, and record the lot number in eDHR."}]},
+            {"title": "Step E", "instructions": [{"kind": "Action", "description": "Press the cap (p/n 6600-1150-400) into the inner East rail hole to secure it."}]},
+            {"title": "Step F", "instructions": [{"kind": "Action", "description": "Assemble the East side cover (p/n 6600-1459-500) using screws on the outside and nuts on the inside, ensuring the tab is at the edge."}, {"kind": "Torque", "identifier": "2 M3 Screws (p/n 6600-0706-401) and 2 M3 Nuts (p/n 6600-0714-401).", "torque": "0.8 +/- 10% Nm."}]},
+            {"title": "Step G", "instructions": [{"kind": "Action", "description": "Assemble the West side cover (p/n 6600-1477-500) using screws on the outside and nuts on the inside, ensuring the tab is at the edge."}, {"kind": "Torque", "identifier": "2 M3 Screws (p/n 6600-0706-401) and 2 M3 Nuts (p/n 6600-0714-401).", "torque": "0.8 +/- 10% Nm."}]},
+            {"title": "Step H (South Wall)", "instructions": [{"kind": "Action", "description": "Loosen the two corner bracket screws on the South wall."}, {"kind": "Action", "description": "Place the alignment tool over the brackets against the wall."}, {"kind": "Torque", "identifier": "4 South wall corner bracket screws.", "torque": "1.7 +/- 10% Nm."}]},
+            {"title": "Step I (North Wall)", "instructions": [{"kind": "Action", "description": "Loosen the two corner bracket screws on the North wall."}, {"kind": "Action", "description": "Place the alignment tool over the brackets against the wall."}, {"kind": "Torque", "identifier": "4 North wall corner bracket screws.", "torque": "1.7 +/- 10% Nm."}]},
+            {"title": "Step J", "instructions": [{"kind": "Action", "description": "Place spacer tools onto the corner brackets."}]},
+            {"title": "Step K", "instructions": [{"kind": "Action", "description": "Lower the canopy onto the spacers."}, {"kind": "Action", "description": "Lift the radiant heater bracket until it stops and hand-tighten the nuts in the specified order."}, {"kind": "Torque", "identifier": "Radiant heater bracket nuts (1, 2, 3, and 4).", "torque": "7.0 +/- 10% Nm."}]},
+            {"title": "Step L", "instructions": [{"kind": "Action", "description": "Lift and lower the canopy to verify smooth, centered movement without overlapping the walls."}, {"kind": "Action", "description": "Ensure pins center in wedges and seals touch the inner walls; adjust canopy alignment if necessary."}]},
+            {"title": "Step M", "instructions": [{"kind": "Action", "description": "Hand-tighten the radiant heater nuts in the specified order."}, {"kind": "Torque", "identifier": "Radiant heater nuts.", "torque": "7.0 +/- 10% Nm (in the same sequence)."}]},
+            {"title": "Step N", "instructions": [{"kind": "Action", "description": "Visually verify the shipping lock is fully visible in the slot; if not, repeat the alignment."}]},
+            {"title": "Canopy Verification", "instructions": [{"kind": "Action", "description": "Raise the canopy to verify heater doors open fully, then remove the 4 spacers."}, {"kind": "Action", "description": "Lower the canopy to check for flush, silent closing doors, and disconnect power box cables."}]},
+            {"title": "Step P", "instructions": [{"kind": "Action", "description": "Reconnect power box cables and adjust the canopy height to a comfortable position."}]},
+            {"title": "Step Q", "instructions": [{"kind": "Action", "description": "Raise canopy to ensure heater doors open fully, aluminum sheets are intact, and the reflector label is present."}, {"kind": "Action", "description": "Lower canopy to confirm silent, flush door closing; send to repair station if verification fails."}]},
+            {"title": "Step R", "instructions": [{"kind": "Action", "description": "Apply final torque to the radiation heater bracket nuts and bolts."}, {"kind": "Torque", "identifier": "Radiation heater bracket nuts and bolts.", "torque": "9.15 +/- 0.67 Nm."}]},
+            {"title": "Step S", "instructions": [{"kind": "Action", "description": "Place the 4 lb alignment weight on the heater bracket."}, {"kind": "Action", "description": "Fully raise and lower the canopy to verify silent door closing, centered pins, and proper seal contact, then remove the weight."}]},
+            {"title": "Step T", "instructions": [{"kind": "Action", "description": "Install two buttons (p/n 6600-1788-500) on the cover (p/n 6600-1220-500) using screws, lock washers, and flat washers."}, {"kind": "Torque", "identifier": "2 M5 Screws (p/n 6600-0706-418).", "torque": "1.8 +/- 10% Nm."}]},
+            {"title": "Step U", "instructions": [{"kind": "Action", "description": "Install the cover onto the canopy with 4 screws."}, {"kind": "Action", "description": "Remove the North seal, attach the soffit (p/n 6600-1461-500) with 6 clips (p/n 6600-1056-400), replace the seal, lower the canopy, and disconnect cables."}, {"kind": "Torque", "identifier": "4 M4 Screws (p/n 6600-0706-409).", "torque": "1.8 +/- 10% Nm."}]},
+            {"title": "Step V", "instructions": [{"kind": "Action", "description": "Attach two giraffe labels (p/n 2082164-001) to both ends of the canopy cover using the alignment tool."}]},
+            {"title": "Step W", "instructions": [{"kind": "Action", "description": "Inspect the unit for cosmetic damage; complete the DCP in eDHR if none, or reject to repair if damaged."}]},
+        ]
+        self.all_steps_current_step = 0
+        self.all_steps_current_instruction = 0
+        self.all_steps_completed = set()
+        self.all_steps_expanded_steps = set()
+        self.all_steps_expanded_instructions = set()
+        self.all_steps_active_card = None
+        self.all_steps_click_after = None
+
+        title_row = ttk.Frame(self.all_steps_frame, style="App.TFrame")
+        title_row.pack(fill="x", pady=(0, 14))
+        ttk.Label(title_row, text="All Steps", style="TabTitle.TLabel").pack(side="left")
+
+        layout = ttk.Frame(self.all_steps_frame, style="App.TFrame")
+        layout.pack(fill="both", expand=True)
+        layout.grid_rowconfigure(0, weight=1)
+        layout.grid_columnconfigure(0, weight=1)
+
+        list_shell = ttk.Frame(layout, style="App.TFrame")
+        list_shell.grid(row=0, column=0, sticky="nsew", padx=(0, 16))
+        list_shell.grid_rowconfigure(0, weight=1)
+        list_shell.grid_columnconfigure(0, weight=1)
+
+        self.all_steps_canvas = tk.Canvas(list_shell, bg=COLORS["off_white"], highlightthickness=0)
+        self.all_steps_canvas.grid(row=0, column=0, sticky="nsew")
+        scroll_y = ttk.Scrollbar(list_shell, orient="vertical", command=self.all_steps_canvas.yview)
+        scroll_y.grid(row=0, column=1, sticky="ns")
+        self.all_steps_canvas.configure(yscrollcommand=scroll_y.set)
+
+        self.all_steps_list = ttk.Frame(self.all_steps_canvas, style="App.TFrame")
+        self.all_steps_window = self.all_steps_canvas.create_window((0, 0), window=self.all_steps_list, anchor="nw")
+        self.all_steps_list.bind(
+            "<Configure>",
+            lambda _event: self.all_steps_canvas.configure(scrollregion=self.all_steps_canvas.bbox("all")),
+        )
+        self.all_steps_canvas.bind(
+            "<Configure>",
+            lambda event: self.all_steps_canvas.itemconfigure(self.all_steps_window, width=event.width),
+        )
+
+        controls = ttk.Frame(layout, style="Surface.TFrame", padding=(18, 18, 18, 18))
+        controls.grid(row=0, column=1, sticky="ns")
+        ttk.Button(
+            controls,
+            text="Start Simulation",
+            command=lambda: self.notebook.select(self.steps_frame),
+            style="Accent.TButton",
+        ).pack(fill="x", pady=(0, 12))
+        ttk.Button(
+            controls,
+            text="Siguiente v",
+            command=self.advance_all_steps,
+            style="Accent.TButton",
+        ).pack(fill="x")
+
+        self.render_all_steps()
+
+    def get_all_step_status(self, step_index):
+        instruction_count = len(self.all_steps_data[step_index]["instructions"])
+        if all((step_index, i) in self.all_steps_completed for i in range(instruction_count)):
+            return "Completed"
+        if step_index == self.all_steps_current_step:
+            return "In Progress"
+        return "Not Completed"
+
+    def get_all_instruction_status(self, step_index, instruction_index):
+        if (step_index, instruction_index) in self.all_steps_completed:
+            return "Completed"
+        if (
+            step_index == self.all_steps_current_step
+            and instruction_index == self.all_steps_current_instruction
+        ):
+            return "In Progress"
+        return "Not Completed"
+
+    def schedule_all_steps_action(self, callback, *args):
+        if self.all_steps_click_after:
+            self.root.after_cancel(self.all_steps_click_after)
+        self.all_steps_click_after = self.root.after(180, lambda: self._run_all_steps_action(callback, *args))
+
+    def _run_all_steps_action(self, callback, *args):
+        self.all_steps_click_after = None
+        callback(*args)
+
+    def cancel_all_steps_scheduled_action(self):
+        if self.all_steps_click_after:
+            self.root.after_cancel(self.all_steps_click_after)
+            self.all_steps_click_after = None
+
+    def expand_all_step(self, step_index):
+        self.all_steps_expanded_steps.add(step_index)
+        self.render_all_steps()
+
+    def collapse_all_step(self, step_index):
+        self.cancel_all_steps_scheduled_action()
+        if step_index == self.all_steps_current_step:
+            return
+        self.all_steps_expanded_steps.discard(step_index)
+        self.all_steps_expanded_instructions = {
+            key for key in self.all_steps_expanded_instructions if key[0] != step_index
+        }
+        self.render_all_steps()
+
+    def expand_all_instruction(self, step_index, instruction_index):
+        self.all_steps_expanded_steps.add(step_index)
+        self.all_steps_expanded_instructions.add((step_index, instruction_index))
+        self.render_all_steps()
+
+    def collapse_all_instruction(self, step_index, instruction_index):
+        self.cancel_all_steps_scheduled_action()
+        if (
+            step_index == self.all_steps_current_step
+            and instruction_index == self.all_steps_current_instruction
+        ):
+            return
+        self.all_steps_expanded_instructions.discard((step_index, instruction_index))
+        self.render_all_steps()
+
+    def render_all_steps(self, keep_current_visible=False):
+        for child in self.all_steps_list.winfo_children():
+            child.destroy()
+        self.all_steps_active_card = None
+
+        for step_index, step in enumerate(self.all_steps_data):
+            step_status = self.get_all_step_status(step_index)
+            step_is_expanded = (
+                step_status == "In Progress" or step_index in self.all_steps_expanded_steps
+            )
+            status_bg = {
+                "Completed": COLORS["green"],
+                "In Progress": COLORS["turquoise"],
+                "Not Completed": COLORS["pending"],
+            }[step_status]
+            status_fg = COLORS["white"] if step_status == "In Progress" else COLORS["navy"]
+
+            step_card = tk.Frame(
+                self.all_steps_list,
+                bg=COLORS["white"],
+                highlightbackground=COLORS["line"],
+                highlightthickness=1,
+            )
+            step_card.pack(fill="x", pady=(0, 10))
+            if step_index == self.all_steps_current_step:
+                self.all_steps_active_card = step_card
+
+            header = tk.Frame(step_card, bg=COLORS["white"])
+            header.pack(fill="x")
+            step_title = tk.Label(
+                header,
+                text=f"{step_index + 1}. {step['title']}",
+                bg=COLORS["white"],
+                fg=COLORS["navy"],
+                font=modern_font(13, "bold"),
+                anchor="w",
+                padx=16,
+                pady=12,
+                cursor="hand2",
+            )
+            step_title.pack(side="left", fill="x", expand=True)
+            step_title.bind(
+                "<Button-1>",
+                lambda _event, i=step_index: self.schedule_all_steps_action(self.expand_all_step, i),
+            )
+            step_title.bind("<Double-Button-1>", lambda _event, i=step_index: self.collapse_all_step(i))
+
+            step_badge = tk.Label(
+                header,
+                text=step_status,
+                bg=status_bg,
+                fg=status_fg,
+                font=modern_font(9, "bold"),
+                padx=12,
+                pady=6,
+                cursor="hand2",
+            )
+            step_badge.pack(side="right", padx=14)
+            step_badge.bind(
+                "<Button-1>",
+                lambda _event, i=step_index: self.schedule_all_steps_action(self.expand_all_step, i),
+            )
+            step_badge.bind("<Double-Button-1>", lambda _event, i=step_index: self.collapse_all_step(i))
+
+            if not step_is_expanded:
+                continue
+
+            instruction_area = tk.Frame(step_card, bg=COLORS["white"])
+            instruction_area.pack(fill="x", padx=16, pady=(0, 14))
+            for instruction_index, instruction in enumerate(step["instructions"]):
+                instruction_status = self.get_all_instruction_status(step_index, instruction_index)
+                instruction_is_expanded = (
+                    instruction_status == "In Progress"
+                    or (step_index, instruction_index) in self.all_steps_expanded_instructions
+                )
+                instruction_bg = {
+                    "Completed": COLORS["green"],
+                    "In Progress": COLORS["turquoise_light"],
+                    "Not Completed": COLORS["pending"],
+                }[instruction_status]
+
+                instruction_card = tk.Frame(instruction_area, bg=instruction_bg)
+                instruction_card.pack(fill="x", pady=4)
+                instruction_header = tk.Label(
+                    instruction_card,
+                    text=f"{step_index + 1}.{instruction_index + 1} {instruction['kind']} - {instruction_status}",
+                    bg=instruction_bg,
+                    fg=COLORS["navy"],
+                    font=modern_font(10, "bold"),
+                    anchor="w",
+                    padx=12,
+                    pady=8,
+                    cursor="hand2",
+                )
+                instruction_header.pack(fill="x")
+                instruction_header.bind(
+                    "<Button-1>",
+                    lambda _event, s=step_index, i=instruction_index: self.schedule_all_steps_action(
+                        self.expand_all_instruction, s, i
+                    ),
+                )
+                instruction_header.bind(
+                    "<Double-Button-1>",
+                    lambda _event, s=step_index, i=instruction_index: self.collapse_all_instruction(s, i),
+                )
+
+                if not instruction_is_expanded:
+                    continue
+
+                if instruction["kind"] == "Torque":
+                    detail = f"Identifier: {instruction['identifier']}\nTorque: {instruction['torque']}"
+                else:
+                    detail = instruction["description"]
+                tk.Label(
+                    instruction_card,
+                    text=detail,
+                    bg=COLORS["white"],
+                    fg=COLORS["navy_2"],
+                    font=modern_font(9),
+                    justify="left",
+                    anchor="w",
+                    padx=12,
+                    pady=10,
+                    wraplength=760,
+                ).pack(fill="x", padx=8, pady=(0, 8))
+
+        if keep_current_visible:
+            self.all_steps_canvas.after_idle(self.scroll_all_steps_to_current)
+
+    def scroll_all_steps_to_current(self):
+        if not self.all_steps_active_card:
+            return
+        self.all_steps_canvas.update_idletasks()
+        scroll_region = self.all_steps_canvas.bbox("all")
+        if not scroll_region:
+            return
+        content_height = max(1, scroll_region[3] - scroll_region[1])
+        viewport_height = self.all_steps_canvas.winfo_height()
+        target_y = max(0, self.all_steps_active_card.winfo_y() - 18)
+        if content_height > viewport_height:
+            self.all_steps_canvas.yview_moveto(target_y / content_height)
+
+    def advance_all_steps(self):
+        self.cancel_all_steps_scheduled_action()
+        current_key = (self.all_steps_current_step, self.all_steps_current_instruction)
+        self.all_steps_completed.add(current_key)
+        self.all_steps_expanded_instructions.discard(current_key)
+
+        current_step = self.all_steps_data[self.all_steps_current_step]
+        if self.all_steps_current_instruction + 1 < len(current_step["instructions"]):
+            self.all_steps_current_instruction += 1
+        elif self.all_steps_current_step + 1 < len(self.all_steps_data):
+            self.all_steps_expanded_steps.discard(self.all_steps_current_step)
+            self.all_steps_current_step += 1
+            self.all_steps_current_instruction = 0
+        self.render_all_steps(keep_current_visible=True)
 
     def setup_steps(self):
         title_row = ttk.Frame(self.steps_frame, style="App.TFrame")
